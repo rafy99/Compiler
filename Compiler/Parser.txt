@@ -1,0 +1,527 @@
+enum tokenType {
+	// intergar = int 
+	VOID, MAIN, INTEGER, IF, ELSE, ID, LPARN, RPARN, LBRACK, RBRACK, LESS, EQUAL, GREATER, PLUS, MINUS, COMMA, SEMICOL,
+	ASSIGN, ERROR, ENDSOURCE, INTEGERVALUE
+};
+enum nodeType {
+	UNDEFINED, START, VOIDN, MAINN, INTEGERN, BOOLEANN, IFN, ELSEN, VARN,
+	IDN, LPARNN, RPARNN, LBRACKN, RBRACKN, LESSN, EQUALN, GREATERN, PLUSN, MINUSN, COMMAN, SEMICOLN,
+	ASSIGNN, PROGN, BLOCKN, DECSEQN, DECN, TYPEN, VARLISTN, VARLISTTAILN, COMSEQN, COMSEQTAILN, COMN, COMTAILN, EXPRN, EXPRTAILN, SIMEXPRN, SIMEXPRTAILN,
+	VARFN, RELATN, OPERATIONN, ELEMENTN, INTEGERVALUEN
+};
+class Token {
+public:
+	tokenType type;
+	string name;
+	Token() {
+		type = ERROR;
+		name = "";
+	}
+};
+class Node {
+public:
+	nodeType type;
+	string Lexeme;
+	Node* child[11];
+	Node() {
+		for (int i = 0; i < 11; i++) {
+			child[i] = NULL;
+		}
+	}
+	~Node() {
+		for (int i = 0; i < 11; i++)
+			delete child[i];
+	}
+};
+Node* root;
+class Parser {
+private:
+	fstream f;
+	Token currentToken;
+
+	Token getToken() {
+		char ch;
+		Token t;
+		f.get(ch);
+		while (isspace(ch)) {
+			f.get(ch);
+			if (f.eof())
+			{
+				t.name = "_END_";
+				t.type = ENDSOURCE;
+				return t;
+			}
+		}
+		if (f.eof()) {
+			t.name = "_END_";
+			t.type = ENDSOURCE;
+		}
+		else if (ch == '{') { t.name = ch;  t.type = LBRACK; }
+		else if (ch == '}') { t.name = ch; t.type = RBRACK; }
+		else if (ch == '(') { t.name = ch;  t.type = LPARN; }
+		else if (ch == ')') { t.name = ch; t.type = RPARN; }
+		else if (ch == '+') { t.name = ch; t.type = PLUS; }
+		else if (ch == '-') { t.name = ch; t.type = MINUS; }
+		else if (ch == ';') { t.name = ch; t.type = SEMICOL; }
+		else if (ch == '=') { t.name = ch; t.type = ASSIGN; }
+		else if (ch == ',') { t.name = ch; t.type = COMMA; }
+
+		else if (ch == '<')
+		{
+			t.name = ch;
+			f.get(ch);
+			t.type = LESS;
+		}
+		else if (ch == '>')
+		{
+			t.name = ch;
+			f.get(ch);
+			t.type = GREATER;
+
+		}
+		else if (isalpha(ch)) {
+			t.name = ch;
+			f.get(ch);
+			while (isalnum(ch)) {
+				t.name += ch;
+				f.get(ch);
+			}
+			f.putback(ch);
+			return checkReserved(t);
+		}
+		else if (isdigit(ch)) {
+			t.name = ch;
+			f.get(ch);
+			while (isdigit(ch)) {
+				t.name += ch;
+				f.get(ch);
+			}
+			f.putback(ch);
+			t.type = INTEGERVALUE;
+		}
+		else {
+			t.name = "ERROR !";
+			t.type = ERROR;
+		}
+		return t;
+	}
+	Token checkReserved(Token t) {
+		if (t.name == "void") t.type = VOID;
+		else if (t.name == "main") t.type = MAIN;
+		else if (t.name == "int") t.type = INTEGER;
+		else if (t.name == "if") t.type = IF;
+		else if (t.name == "else") t.type = ELSE;
+		else t.type = ID;
+		return t;
+	}
+	void match(tokenType type) {
+		if (currentToken.type == type) {
+			cout << currentToken.name << " is matched\n";
+		}
+		else {
+			syntaxError(currentToken);
+		}
+		if (type != ENDSOURCE)
+			currentToken = getToken();
+	}
+	void syntaxError(Token t) {
+		cout << t.name << " isn't expected\n";
+	}
+
+
+	///<Program> :: void main () {<block>}   TRUE
+	Node* program() {
+		Node* ptr = new Node();
+		ptr->type = PROGN;
+		if (currentToken.type == VOID) {
+			ptr->child[0] = new Node();
+			ptr->child[0]->Lexeme = currentToken.name;
+			ptr->child[0]->type = VOIDN;
+		}
+		match(VOID);
+		if (currentToken.type == MAIN) {
+			ptr->child[1] = new Node();
+			ptr->child[1]->Lexeme = currentToken.name;
+			ptr->child[1]->type = MAINN;
+		}
+		match(MAIN);
+		if (currentToken.type == LPARN) {
+			ptr->child[2] = new Node();
+			ptr->child[2]->Lexeme = currentToken.name;
+			ptr->child[2]->type = LPARNN;
+		}
+		match(LPARN);
+		if (currentToken.type == RPARN) {
+			ptr->child[3] = new Node();
+			ptr->child[3]->Lexeme = currentToken.name;
+			ptr->child[3]->type = RPARNN;
+		}
+		match(RPARN);
+		if (currentToken.type == LBRACK) {
+			ptr->child[4] = new Node();
+			ptr->child[4]->Lexeme = currentToken.name;
+			ptr->child[4]->type = LBRACKN;
+		}
+		match(LBRACK);
+		ptr->child[5] = block();
+		if (currentToken.type == RBRACK) {
+			ptr->child[6] = new Node();
+			ptr->child[6]->Lexeme = currentToken.name;
+			ptr->child[6]->type = RBRACKN;
+		}
+		match(RBRACK);
+		return ptr;
+	}
+
+	///<block> :: <declaration - seq><command -seq> TRUE
+	Node* block() {
+		Node* ptr = new Node();
+		ptr->type = BLOCKN;
+		ptr->child[0] = decSeq();
+		ptr->child[2] = comSeq();
+		return ptr;
+	}
+
+	/// <dec-seq> ::= E | <dec><dec-seq>  TRUE
+	Node* decSeq() {
+		Node* ptr = new Node();
+		ptr->type = DECSEQN;
+		if (currentToken.type == INTEGER) {
+			ptr->child[0] = dec();
+			ptr->child[1] = decSeq();
+		}
+		return ptr;
+	}
+
+	//<declaration> :: <type> <var-list>  ;			TRUE
+	Node* dec() {
+		Node* ptr = new Node();
+		ptr->type = DECN;
+		ptr->child[0] = type();
+		ptr->child[1] = varList();
+		if (currentToken.type == SEMICOL) {
+			ptr->child[2] = new Node();
+			ptr->child[2]->Lexeme = currentToken.name;
+			ptr->child[2]->type = INTEGERN;
+		}
+		match(SEMICOL);
+		return ptr;
+	}
+
+	///<type> :: int							TRUE
+	Node* type() {
+		Node* ptr = new Node();
+		ptr->type = TYPEN;
+		switch (currentToken.type) {
+		case INTEGER:
+			ptr->child[0] = new Node();
+			ptr->child[0]->Lexeme = currentToken.name;
+			ptr->child[0]->type = INTEGERN;
+			match(INTEGER);
+			break;
+		default:
+			syntaxError(currentToken);
+		}
+		return ptr;
+	}
+
+	/// <var-list> ::= <var><var-list-tail>					TRUE
+	Node* varList() {
+		Node* ptr = new Node();
+		ptr->type = VARLISTN;
+		ptr->child[0] = var();
+		ptr->child[1] = varListTail();
+		return ptr;
+	}
+
+	/// <var-list-tail> ::= E | , <var-list>         TRUE
+	Node* varListTail() {
+		Node* ptr = new Node();
+		ptr->type = VARLISTTAILN;
+		if (currentToken.type == COMMA) {
+			ptr->child[0] = new Node();
+			ptr->child[0]->type = COMMAN;
+			ptr->child[0]->Lexeme = currentToken.name;
+			match(COMMA);
+			ptr->child[1] = varList();
+		}
+		return ptr;
+	}
+
+	/// <com-seq> ::= <com> <com-seq-tail>							TRUE
+	Node* comSeq() {
+		Node* ptr = new Node();
+		ptr->type = COMSEQN;
+		ptr->child[0] = command();
+		ptr->child[1] = comSeqTail();
+		return ptr;
+	}
+
+	/// <com-seq-tail> ::= E | <com-seq>							TRUE
+	Node* comSeqTail() {
+		Node* ptr = new Node();
+		ptr->type = COMSEQTAILN;
+		if (currentToken.type == ID || currentToken.type == IF) {
+			ptr->child[0] = comSeq();
+		}
+		return ptr;
+	}
+
+	///<command>:: <var> = <expr> ; |if <expr> { <command-seq> } else {<command-seq>}
+	Node* command() {
+		Node* ptr = new Node();
+		ptr->type = COMN;
+
+		switch (currentToken.type) {
+
+		case ID:
+			ptr->child[0] = var();
+			if (currentToken.type == ASSIGN) {
+				ptr->child[1] = new Node();
+				ptr->child[1]->type = ASSIGNN;
+				ptr->child[1]->Lexeme = currentToken.name;
+			}
+			match(ASSIGN);
+			ptr->child[2] = expr();
+			if (currentToken.type == SEMICOL) {
+				ptr->child[3] = new Node();
+				ptr->child[3]->type = SEMICOLN;
+				ptr->child[3]->Lexeme = currentToken.name;
+			}
+			match(SEMICOL);
+			break;
+
+			//if <expr> { <command-seq> <command-seq-tail>} else {<command-seq><command-seq-tail>}
+		case IF:
+			if (currentToken.type == IF) {
+				ptr->child[0] = new Node();
+				ptr->child[0]->type = IFN;
+				ptr->child[0]->Lexeme = currentToken.name;
+			}
+			match(IF);
+			ptr->child[1] = expr();
+			if (currentToken.type == LBRACK) {
+				ptr->child[2] = new Node();
+				ptr->child[2]->type = LBRACKN;
+				ptr->child[2]->Lexeme = currentToken.name;
+			}
+			match(LBRACK);
+			ptr->child[3] = comSeq();
+			ptr->child[4] = comSeqTail();
+			if (currentToken.type == RBRACK) {
+				ptr->child[5] = new Node();
+				ptr->child[5]->type = RBRACKN;
+				ptr->child[5]->Lexeme = currentToken.name;
+			}
+			match(RBRACK);
+			if (currentToken.type == ELSE) {
+				ptr->child[6] = new Node();
+				ptr->child[6]->Lexeme = currentToken.name;
+				ptr->child[6]->type = ELSEN;
+			}
+			match(ELSE);
+			if (currentToken.type == LBRACK) {
+				ptr->child[7] = new Node();
+				ptr->child[7]->Lexeme = currentToken.name;
+				ptr->child[7]->type = LBRACKN;
+			}
+			match(LBRACK);
+			ptr->child[8] = comSeq();
+			ptr->child[9] = comSeqTail();
+			if (currentToken.type == RBRACK) {
+				ptr->child[10] = new Node();
+				ptr->child[10]->Lexeme = currentToken.name;
+				ptr->child[10]->type = RBRACKN;
+			}
+			match(RBRACK);
+			break;
+		default: syntaxError(currentToken);
+		}
+
+		return ptr;
+	}
+	/// <expr> ::=<simple-expr> <expr-tail>			TRUE
+	Node* expr() {
+		Node* ptr = new Node();
+		ptr->type = EXPRN;
+		ptr->child[0] = simpExpr();
+		ptr->child[1] = exprTail();
+		return ptr;
+	}
+
+	/// <expr-tail> ::= E | <relation> < simple-expr>		TRUE
+	Node* exprTail() {
+		Node* ptr = new Node();
+		ptr->type = EXPRTAILN;
+		if (currentToken.type == LESS || currentToken.type == EQUAL || currentToken.type == GREATER) {
+			ptr->child[0] = relat();
+			ptr->child[1] = simpExpr();
+		}
+		return ptr;
+	}
+
+	///<simple-expr> :: <element> <simple-expr-tail>        TRUE
+	Node* simpExpr() {
+		Node* ptr = new Node();
+		ptr->type = SIMEXPRN;
+		ptr->child[0] = element();
+		ptr->child[1] = simpExprTail();
+		return ptr;
+	}
+
+	///<simple-expr-tail>:: empty | <weakop><element><simple-expr-tail>			TRUE
+	Node* simpExprTail() {
+		Node* ptr = new Node();
+		ptr->type = SIMEXPRTAILN;
+		if (currentToken.type == PLUS || currentToken.type == MINUS) {
+			ptr->child[0] = weak();
+			ptr->child[1] = element();
+			ptr->child[2] = simpExprTail();
+		}
+		return ptr;
+	}
+	//<element>:: <numeral>|<var>|(<exp>)|-<element>                     TRUE
+	Node* element() {
+		Node* ptr = new Node();
+		ptr->type = ELEMENTN;
+		switch (currentToken.type) {
+		case INTEGERVALUE:
+			ptr->child[0] = new Node();
+			ptr->child[0]->type = INTEGERVALUEN;
+			ptr->child[0]->Lexeme = currentToken.name;
+			match(INTEGERVALUE);
+			break;
+		case ID:
+			ptr->child[0] = var();
+			break;
+		case LPARN:
+			ptr->child[0] = new Node();
+			ptr->child[0]->type = LPARNN;
+			ptr->child[0]->Lexeme = currentToken.name;
+			match(LPARN);
+			ptr->child[1] = expr();
+			if (currentToken.type == RPARN) {
+				ptr->child[2] = new Node();
+				ptr->child[2]->type = RPARNN;
+				ptr->child[2]->Lexeme = currentToken.name;
+			}
+			match(RPARN);
+			break;
+		case MINUS:
+			ptr->child[0] = new Node();
+			ptr->child[0]->type = MINUSN;
+			ptr->child[0]->Lexeme = currentToken.name;
+			match(MINUS);
+			ptr->child[1] = element();
+			break;
+		default:
+			syntaxError(currentToken);
+
+		}
+		return ptr;
+	}
+	/// <var> ::= ID								TRUE
+	Node* var() {
+		Node* ptr = new Node();
+		ptr->type = VARN;
+		ptr->child[0] = new Node();
+		ptr->child[0]->type = IDN;
+		ptr->child[0]->Lexeme = currentToken.name;
+		match(ID);
+		return ptr;
+	}
+
+	/// <relation> ::= < | = |>								TRUE
+	Node* relat() {
+		Node* ptr = new Node();
+		ptr->type = RELATN;
+		switch (currentToken.type) {
+		case LESS:
+			ptr->child[0] = new Node();
+			ptr->child[0]->type = LESSN;
+			ptr->child[0]->Lexeme = currentToken.name;
+			match(LESS);
+			break;
+		case EQUAL:
+			ptr->child[0] = new Node();
+			ptr->child[0]->type = EQUALN;
+			ptr->child[0]->Lexeme = currentToken.name;
+			match(EQUAL);
+			break;
+		case GREATER:
+			ptr->child[0] = new Node();
+			ptr->child[0]->type = GREATERN;
+			ptr->child[0]->Lexeme = currentToken.name;
+			match(GREATER);
+			break;
+		default:
+			syntaxError(currentToken);
+		}
+		return ptr;
+	}
+	//*****************************************
+	///<weak op>::= + | - |							TRUE
+	Node* weak() {
+		Node* ptr = new Node();
+		ptr->type = OPERATIONN;
+		switch (currentToken.type) {
+		case PLUS:
+			ptr->child[0] = new Node();
+			ptr->child[0]->type = PLUSN;
+			ptr->child[0]->Lexeme = currentToken.name;
+			match(PLUS);
+			break;
+		case MINUS:
+			ptr->child[0] = new Node();
+			ptr->child[0]->type = MINUSN;
+			ptr->child[0]->Lexeme = currentToken.name;
+			match(MINUS);
+			break;
+		default:
+			syntaxError(currentToken);
+		}
+		return ptr;
+	}
+public:
+	Parser(string fileName) {
+		f.open(fileName);
+		if (!f)
+		{
+			cout << "Unable to open file" << endl; //system("pause");  //exit(1);
+		}
+	}
+	~Parser() {
+		f.close();
+	}
+	//<sampleParser> ::= <program> eof
+	void  sampleParser() {
+		Node* ptr = new Node();									//START
+		root = ptr;
+
+		ptr->type = START;
+		currentToken = getToken();
+		ptr->child[0] = program();
+		if (currentToken.type == ENDSOURCE) {
+			ptr->child[1] = new Node();
+			ptr->child[1]->Lexeme = currentToken.name;
+		}
+		match(ENDSOURCE);
+	}
+
+	//******************************************
+	void displayTree(Node* Tree) {
+		if (Tree) {
+			cout << "    ";
+			cout << " " << Tree->Lexeme << endl;
+			displayTree(Tree->child[0]);
+			displayTree(Tree->child[1]);
+			displayTree(Tree->child[2]);
+			displayTree(Tree->child[3]);
+			displayTree(Tree->child[4]);
+			displayTree(Tree->child[5]);
+			displayTree(Tree->child[6]);
+			displayTree(Tree->child[7]);
+			displayTree(Tree->child[8]);
+		}
+	}
+};

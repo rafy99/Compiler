@@ -1,0 +1,200 @@
+void intermediate_code_generation() {
+
+	string strings[100];// array of strings 
+	string quadruples[50][50];
+	string fileinarray[100][100];
+	string op[] = { "+","-" };
+
+	string n[] = {
+
+				   "t0", "t1", "t2", "t3", "t4", "t5",
+				   "t6", "t7", "t8", "t9", "t10",
+				   "t11","t12","t13","t14","t15"
+	};
+	// flags
+	int count = 0; int count1 = 0; int rows = 0; int coloms = 0; int rows1 = 0; int coloms1 = 0;
+	int rowsrows = 0; int colomscoloms = 0; int rowsrows1 = 0; int colomscoloms1 = 0;
+
+	ifstream infile;
+	ofstream outfile;
+	outfile.open("output.txt");
+	if (outfile.fail()) {
+		cerr << "Error to open output.txt file" << endl;
+		exit(1);
+	}
+	infile.open("program.txt");
+	if (infile.fail()) {
+		cerr << "Error Happened while openening list.txt file" << endl;
+		exit(1);
+	}
+	while (!infile.eof()) { // n+1
+		infile >> strings[count];
+		count++;//flagone indexing 
+	}
+	infile.close();
+
+	for (int i = 0; i < count; i++) {// i not used inside main algorithm 
+		// some delacrations
+		/*
+			if(x<0 || x>0 && ......){
+				x = x + 1 ;
+				x = x + 1 ;
+				x = x + 1 ;
+			}else{
+				x=x-1;
+				x=x-1;
+				x=x-1;
+			}
+		*/
+		int k = i; int l = 0; int m = 0; int q = 0;
+		string* strings1 = new string[50];// if(....){} l
+		string* strings2 = new string[50];// else{...} m
+		string* strings3 = new string[50];// if () { ... } q
+
+		if (strings[i] == "=") {
+			if (strings[i + 2] == ";") {
+				quadruples[rows][0] = strings[i - 1];
+				quadruples[rows][1] = strings[i + 1];
+				quadruples[rows][2] = "empty";
+				quadruples[rows][3] = "assign";
+				rows++; rowsrows++; colomscoloms += 4;
+				if (count1 == 0) {
+
+					cout << "t0 = " << strings[i + 1] << " ;" << endl;
+					outfile << "t0 = " << strings[i + 1] << " ;" << endl;
+					count1++;
+					fileinarray[rows1][0] = "t0";
+					fileinarray[rows1][1] = "=";
+					fileinarray[rows1][2] = strings[i + 1];
+					fileinarray[rows1][3] = "EMPTY";
+					fileinarray[rows1][4] = "EMPTY";
+					fileinarray[rows1][5] = "Assign";
+					rows1++; rowsrows1++; colomscoloms1 += 6;
+				}
+				else {
+					cout << n[count1] << " = " << strings[i + 1] << " ;" << endl;
+					outfile << n[count1] << " = " << strings[i + 1] << " ;" << endl;
+					count1++;
+					fileinarray[rows1][0] = n[count1];
+					fileinarray[rows1][1] = "=";
+					fileinarray[rows1][2] = strings[i + 1];
+					fileinarray[rows1][3] = "EMPTY";
+					fileinarray[rows1][4] = "EMPTY";
+					fileinarray[rows1][5] = "Assign";
+					rows1++; rowsrows1++; colomscoloms1 += 6;
+				}
+			}
+		}
+		else if (strings[i] == "if") {// if ( x < 0 || x > 0) { x = x + 1 ; }
+			int temp = i + 2;
+			while (strings[temp] != ")") {
+				temp++;
+			}
+			for (int var = k + 2; var < temp; var++) {
+				strings1[l++] = strings[var];
+			}
+			cout << "if ";
+			outfile << "if ";
+			for (int var1 = 0; var1 <= l; var1++) {
+				cout << strings1[var1];
+				outfile << strings1[var1];
+			}
+			cout << " is true ";
+			outfile << " is true ";
+			int temp3 = temp + 2;
+			int temp4 = temp3;// the beginning
+			while (strings[temp3] != "}") {
+				temp3++;//end
+			}
+			for (int var4 = temp4; var4 < temp3; var4++) {
+				strings3[q++] = strings[var4];
+			}
+			cout << "then do ";
+			outfile << "then do ";
+			cout << endl;
+			outfile << endl;
+			for (int var5 = 0; var5 <= q; var5++) {
+				cout << strings3[var5];
+				outfile << strings3[var5];
+			}
+			cout << endl;
+			outfile << endl;
+		}
+		else if (strings[i] == "else") {
+			int temp2 = i + 2;
+			while (strings[temp2] != "}") {
+				temp2++;
+			}
+			for (int var2 = k + 2; var2 < temp2; var2++) {
+				strings2[m++] = strings[var2];
+			}
+			cout << "if not true then " << endl;
+			outfile << "if not true then " << endl;
+			for (int var3 = 0; var3 <= m; var3++) {
+				cout << strings2[var3];
+				outfile << strings2[var3];
+			}
+			cout << endl;
+			outfile << endl;
+		}
+		if (strings[i] == "if") {
+			fileinarray[rows1][5] = "if";
+		}
+		if (strings[i] == "else") {
+			fileinarray[rows1][5] = "else";
+		}
+		for (int j = 0; j < sizeof(op); j++) {
+			if (strings[i] == op[j]) {
+				quadruples[rows][0] = strings[i - 3];
+				quadruples[rows][1] = strings[i - 1];
+				quadruples[rows][2] = strings[i + 1];
+				quadruples[rows][3] = strings[i];
+				rows++; rowsrows++; colomscoloms += 4;
+
+				if (count1 == 0) {// flagtwo >>>> generating 3 address code
+					cout << "t0 =" << strings[i - 1] << strings[i] << strings[i + 1] << " ;" << endl;
+					outfile << "t0 =" << strings[i - 1] << strings[i] << strings[i + 1] << " ;" << endl;
+					fileinarray[rows1][0] = "t0";
+					fileinarray[rows1][1] = "=";
+					fileinarray[rows1][2] = strings[i - 1];
+					fileinarray[rows1][3] = strings[i];
+					fileinarray[rows1][4] = strings[i + 1];
+
+					rows1++; rowsrows1++; colomscoloms1 += 6;
+				}
+				else {
+					cout << n[count1] << " = " << n[count1 - 1] << strings[i] << strings[i + 1] << " ;" << endl;
+					outfile << n[count1] << " = " << n[count1 - 1] << strings[i] << strings[i + 1] << " " << " ;" << endl;
+					fileinarray[rows1][0] = n[count1];
+					fileinarray[rows1][1] = "=";
+					fileinarray[rows1][2] = n[count1 - 1];
+					fileinarray[rows1][3] = strings[i];
+					fileinarray[rows1][4] = strings[i + 1];
+					rows1++; rowsrows1++; colomscoloms1 += 6;
+				}
+				// must move by 
+				count1++;
+			}
+		}
+	}
+	cout << endl << endl;
+	cout << "QuadRuples" << endl;
+	cout << endl << endl;
+	for (int i = 0; i <= rowsrows; i++) {
+		for (int j = 0; j <= colomscoloms; j++) {
+			cout << "\t" << quadruples[i][j] << "\t";
+		}
+		cout << endl;
+	}
+	cout << endl << endl;
+	cout << "FileInArray" << endl;
+	cout << endl << endl;
+	for (int i = 0; i <= rowsrows1; i++) {
+		for (int j = 0; j <= colomscoloms1; j++) {
+			cout << "\t" << fileinarray[i][j] << "\t";
+		}
+		cout << endl;
+	}
+	//---------------------------------------------------------------------------------------------
+	
+}

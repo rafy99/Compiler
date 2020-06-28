@@ -1,0 +1,341 @@
+void code_generation() {
+	ifstream rfile("outopt.txt");
+	ofstream ofile;
+	string line;
+
+	vector<vector<string> > lines;
+	if (!rfile)
+	{
+		cerr << "Error opening file" << endl;
+		exit(1);
+	}
+	else {
+
+		while (!rfile.eof() && getline(rfile, line))
+		{
+
+			vector<string> tokens;
+			stringstream ls(line);
+			string token;
+
+
+			while (ls >> token)
+			{
+				tokens.push_back(token);
+			}
+
+			if (tokens.size() == 0)
+			{
+				tokens.resize(1);
+			}
+			lines.push_back(tokens);
+
+		}
+
+	}
+
+	map<string, string>Register_Descriptor;
+	Register_Descriptor["R0"];
+
+	string loc;
+	bool op = false;
+
+	bool ifcheck = false;
+	bool symbolcheck = false;
+	string symbol;
+	int Exit = 0;
+	string exit;
+	int MOV = 0;
+	string mov;
+	bool checker_for_mov = false;
+	bool ifnot = false;
+	int countif = 0;
+	std::cout << "ProName		" << "START		0" << endl;
+	for (int i = 0; i < lines.size(); i++)
+	{
+		for (int j = 0; j < lines[i].size(); j++)		//  line  ex t0
+		{
+
+			{ // 2
+				if ((j == 0 && lines[i][j] == "if"))
+				{
+					countif++;
+					goto ifstmt;
+				}
+				else if (j == 0 || (j == 1 && lines[i][j] == "=") || (lines[i][j] == "is" || lines[i][j] == "true" || lines[i][j] == "then" || lines[i][j] == "do"))
+				{
+					continue;
+				}
+				else if (Register_Descriptor["R0"].empty())
+				{
+
+					try {
+						// if x is number
+						int x = stoi(lines[i][j]);
+						cout << "		LDA		" << "NUM" << lines[i][j];
+						Register_Descriptor["R0"] = lines[i][j];
+						loc = "R0";
+						cout << endl;
+					}
+					catch (invalid_argument const e)
+					{
+						cout << "		LDA		" << lines[i][j];			//cout
+						Register_Descriptor["R0"] = lines[i][j];
+						loc = "R0";
+						cout << endl;
+					}//cout
+				}
+				else if (lines[i][j] == "+" || lines[i][j] == "-") // operation 
+				{
+					if (lines[i][j] == "+")
+					{
+						op = true;
+						cout << "		ADD		";										//cout
+					}
+					else
+					{
+						op = true;
+						cout << "		SUB		";										//cout
+					}
+				}
+				else if (op == true) // third parmeter
+				{
+
+					try {
+						// if x is number
+						int x = stoi(lines[i][j]);
+						cout << "NUM" << lines[i][j];
+						cout << endl;
+					}
+					catch (invalid_argument const e)
+					{
+						cout << lines[i][j];
+						cout << endl;
+					}
+
+					op = false;
+				}
+				else if (lines[i][j] == ";")
+				{
+
+					Register_Descriptor[loc] = lines[i][0];
+					cout << "		STA		" << lines[i][0] << endl;
+
+					if (i == (lines.size() - 1) || (countif % 2 == 0 && countif != 0))
+					{
+
+						cout << "		" << exit << "		" << endl;
+					}
+
+				}
+
+
+
+				else if (ifcheck == true)
+				{
+				ifstmt:
+					ifcheck = true;
+					if (lines[i][j] == "if")
+					{
+
+						continue;
+					}
+					if (lines[i][j] == "<" || lines[i][j] == ">" || lines[i][j] == "==")
+					{
+						symbolcheck = true;
+						if (lines[i][j] == "<")
+						{
+							symbol = "JGT";
+						}
+						else if (lines[i][j] == ">")
+						{
+							symbol = "JLT";
+						}
+					}
+					else if (lines[i][j] == "not")
+					{
+						ifnot = true;
+						exit = to_string(Exit);
+						exit = "E" + exit;
+						cout << "		J		" << exit << endl;
+						Exit++;
+						checker_for_mov = true;
+					}
+					else {
+
+						if (!Register_Descriptor["R0"].empty() && symbolcheck == false)
+						{
+							if (Register_Descriptor["R0"] == lines[i][j])
+							{
+								loc = "R0";
+							}
+							else {
+								if (checker_for_mov == true) {
+									try {
+										// if x is number
+										int x = stoi(lines[i][j]);
+										cout << mov << "		LDA		" << "NUM" << lines[i][j];
+										Register_Descriptor["R0"] = lines[i][j];
+										loc = "R0";
+										cout << endl;
+										checker_for_mov = false;
+									}
+									catch (invalid_argument const e)
+									{
+										cout << mov << "		LDA		" << lines[i][j];
+										Register_Descriptor["R0"] = lines[i][j];
+										loc = "R0";
+										cout << endl;
+										checker_for_mov = false;
+									}
+								}
+								else
+								{
+									try {
+										// if x is number
+										int x = stoi(lines[i][j]);
+										cout << "		LDA		" << "NUM" << lines[i][j];
+										Register_Descriptor["R0"] = lines[i][j];
+										loc = "R0";
+										cout << endl;
+									}
+									catch (invalid_argument const e)
+									{
+										cout << "		LDA		" << lines[i][j];
+										Register_Descriptor["R0"] = lines[i][j];
+										loc = "R0";
+										cout << endl;
+									}
+								}
+							}
+						}
+						else  if (symbolcheck == true) {
+							try {
+								// if x is number
+								int x = stoi(lines[i][j]);
+								cout << "		COMP		" << "NUM" << lines[i][j] << endl;
+								mov = to_string(MOV);
+								mov = "MOV" + mov;
+								cout << "		" << symbol << "		" << mov;
+								cout << endl;
+								MOV++;
+							}
+							catch (invalid_argument const e)
+							{
+								cout << "		COMP		" << lines[i][j] << endl;
+								mov = to_string(MOV);
+								mov = "MOV" + mov;
+								cout << "		" << symbol << "		" << mov;
+								cout << endl;
+								MOV++;
+							}
+							symbolcheck = false;
+
+						}
+					}
+
+
+
+
+
+				}
+
+				else
+				{
+					if (Register_Descriptor["R0"].empty())
+					{
+						try {
+							// if x is number
+							int x = stoi(lines[i][j]);
+							cout << "		LDA		" << "NUM" << lines[i][j];
+							Register_Descriptor["R0"] = lines[i][j];
+							loc = "R0";
+							cout << endl;
+						}
+						catch (invalid_argument const e)
+						{
+							cout << "		LDA		" << lines[i][j];			//cout
+							Register_Descriptor["R0"] = lines[i][j];
+							loc = "R0";
+							cout << endl;
+						}
+
+					}
+					else if (!Register_Descriptor["R0"].empty())
+					{
+						if (Register_Descriptor["R0"] == lines[i][j])
+						{
+
+							loc = "R0";
+						}
+						else {
+							try {
+								// if x is number
+								int x = stoi(lines[i][j]);
+								cout << "		LDA		" << "NUM" << lines[i][j];
+								Register_Descriptor["R0"] = lines[i][j];
+								loc = "R0";
+								cout << endl;
+							}
+							catch (invalid_argument const e)
+							{
+								cout << "		LDA		" << lines[i][j];			//cout
+								Register_Descriptor["R0"] = lines[i][j];
+								loc = "R0";
+								cout << endl;
+							}
+						}
+					}
+				}
+
+			}
+		}
+	}
+
+	int countDuplicate = 0;
+	// for printing Assembly dirctive
+	for (int i = 0; i < lines.size(); i++)
+	{
+		for (int j = 0; j < lines[i].size(); j++)		//  line  ex t0
+		{
+
+			if (lines[i][j] == "+" || lines[i][j] == "-")
+			{
+				op = true;
+				continue;
+			}
+			else if (op == true || j == 2)
+			{
+				try {
+					// if number
+					int x = stoi(lines[i][j]);
+					cout << "NUM" << lines[i][j] << "		WORD		" << lines[i][j];
+					cout << endl;
+				}
+				catch (invalid_argument const e)
+				{
+				}
+				op = false;
+			}
+			else if (lines[i][j] == ";")
+			{
+				for (int checkBeforeAssinment = 0; checkBeforeAssinment < i; checkBeforeAssinment++)
+				{
+					if (lines[checkBeforeAssinment][0] == lines[i][0])
+					{
+						countDuplicate++;
+					}
+				}
+				if (countDuplicate == 0)
+				{
+					cout << lines[i][0] << "		RESW		" << "1";
+					cout << endl;
+				}
+				countDuplicate = 0;
+
+			}
+		}
+
+	}
+
+}
