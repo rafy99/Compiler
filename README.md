@@ -1,1 +1,1 @@
-# This Project Wasn't Completed in The Colledge But I was Responsible for Parser and Target Code Generation and Intermediate Code Generation So I puhed Them on Git Hub With the Simple Grammer Of Our Language
+# This Project Wasn't Completed in The Colledge But I was Responsible for Parser , Target Code Generation and Intermediate Code Generation So I puhed Them on Git Hub With the Grammer Of Our Language
